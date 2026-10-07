@@ -3,6 +3,7 @@
 Chỉ gửi dữ liệu giả. Mỗi lần chạy dùng mã riêng trên topic của bài tập.
 """
 
+from datetime import datetime
 import os
 from pathlib import Path
 import queue
@@ -18,7 +19,7 @@ ENV = {**os.environ, "PYTHONIOENCODING": "cp1252", "PYTHONUNBUFFERED": "1",
        "MQTT_HOST": "test.mosquitto.org", "MQTT_PORT": "1883", "MQTT_TLS": "false"}
 ENV.pop("MQTT_USERNAME", None)
 ENV.pop("MQTT_PASSWORD", None)
-IDENTITY = ["--name", "Sinh vien kiem thu", "--student-id", "TEST001"]
+IDENTITY = ["--name", "Sinh viên kiểm thử", "--student-id", "TEST001"]
 
 
 def run(script, *args, env=None):
@@ -28,6 +29,15 @@ def run(script, *args, env=None):
 
 
 def main():
+    defaults = subprocess.run(
+        [sys.executable, "-c", "import publisher; args = publisher.parse_args(); "
+         "assert (args.name, args.student_id, args.message, args.count, args.interval) == "
+         "('Hoàng Xuân Cường', 'B23DCCN109', 'Xin chao tu client Python MQTT', 1, 1)"],
+        cwd=ROOT, env=ENV, capture_output=True, text=True, encoding="utf-8", timeout=5,
+    )
+    assert defaults.returncode == 0, defaults.stderr
+    print("PASS: default identity, greeting, count and interval (no network/publish)")
+
     # stdin điều khiển SIGINT trong chính tiến trình con; dùng được trên Windows.
     wrapper = (
         "import _thread,runpy,sys,threading; "
@@ -50,7 +60,8 @@ def main():
                 observed.append(lines.get(timeout=0.2))
             except queue.Empty:
                 if subscriber.poll() is not None:
-                    raise AssertionError("Subscriber kết thúc trước khi đủ dữ liệu")
+                    errors = [line.strip() for line in observed if line.startswith("Lỗi subscriber:")]
+                    raise AssertionError(f"Subscriber exited early ({subscriber.returncode}): {errors}")
             if predicate("".join(observed)):
                 return
         raise AssertionError("Hết thời gian chờ dữ liệu từ subscriber")
@@ -63,12 +74,28 @@ def main():
         assert result.returncode == 0, result.stderr
         assert result.stdout.count("broker đã xác nhận") == 3
         pattern = re.compile(r"Topic: iot/lab/message\nPayload: " + marker +
-                             r" - TEST001 - Sinh vien kiem thu\nTime: \d{2}:\d{2}:\d{2}")
+                             r" - TEST001 - Sinh viên kiểm thử\nTime: (\d{2}:\d{2}:\d{2})")
         await_text(lambda output: len(pattern.findall(output)) >= 3)
+        for received_time in pattern.findall("".join(observed)):
+            datetime.strptime(received_time, "%H:%M:%S")
+        print("PASS: 3 broker-acknowledged Unicode messages with exact topic/payload and valid time")
+
+        assert subscriber.poll() is None
+        observed.clear()
+        result = run("publisher.py", *IDENTITY)
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.count("broker đã xác nhận") == 1
+        greeting_pattern = re.compile(
+            r"Topic: iot/lab/message\nPayload: Xin chao tu client Python MQTT"
+            r" - TEST001 - Sinh viên kiểm thử\nTime: (\d{2}:\d{2}:\d{2})"
+        )
+        await_text(lambda output: bool(greeting_pattern.search(output)))
+        for received_time in greeting_pattern.findall("".join(observed)):
+            datetime.strptime(received_time, "%H:%M:%S")
+        print("PASS: same subscriber remains active and receives one default greeting")
         subscriber.stdin.write("\n")
         subscriber.stdin.flush()
         assert subscriber.wait(timeout=5) == 0
-        print("PASS: 3 broker-acknowledged messages received with topic/payload/time")
         print("PASS: subscriber SIGINT (Ctrl+C) exits with code 0")
     finally:
         if subscriber.poll() is None:

@@ -143,8 +143,6 @@ Có thể chạy kiểm thử tự động (cần Internet, khoảng 30 giây):
 .\.venv\Scripts\python.exe tests\smoke_test.py
 ```
 
-Kiểm thử dùng thông tin sinh viên giả, gửi và nhận 3 bản tin qua broker công cộng, kiểm tra dừng bằng SIGINT (Ctrl+C), tham số sai, hiển thị tiếng Việt và trường hợp broker không kết nối được.
+Kiểm thử xác nhận thông tin sinh viên mặc định mà không gửi lên mạng. Sau đó dùng tên giả có dấu để gửi 3 bản tin và thêm 1 lời chào từ lần chạy publisher khác qua broker công cộng; kiểm tra topic, payload, giờ nhận hợp lệ và subscriber vẫn chạy liên tục. Các trường hợp dừng bằng SIGINT (Ctrl+C), tham số sai, hiển thị tiếng Việt và broker không kết nối được cũng được kiểm tra.
 
 Nộp các tệp mã nguồn, `requirements.txt` và README này lên GitHub; không nộp `.venv` hoặc mật khẩu. Hạn nộp theo đề: **23:59 Thứ Bảy 10/10/2026**; gửi liên kết GitHub vào nhóm Zalo của lớp.
-
-Tài liệu tham khảo: [kho bài thực hành MQTT Python](https://github.com/Baythao/MQTT_Python_Lab), [Paho MQTT Python 2.x](https://eclipse.dev/paho/files/paho.mqtt.python/html/client.html), [broker thử nghiệm Mosquitto](https://test.mosquitto.org/).
