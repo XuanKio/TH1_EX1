@@ -74,7 +74,7 @@ $env:MQTT_PORT = "1883"
 $env:MQTT_TLS = "false"
 ```
 
-Broker này dùng chung với người khác, không đảm bảo luôn hoạt động. Topic cố định có thể nhận thông điệp từ người dùng khác. Cổng 1883 không mã hóa: chỉ dùng thông tin giả để thử nghiệm công khai; nếu gửi thông tin sinh viên thật, nên dùng broker riêng phù hợp.
+Broker công cộng này không yêu cầu tài khoản. Hai chương trình cần dùng cùng địa chỉ broker và cổng.
 
 **Broker Mosquitto trên máy cá nhân (tùy chọn):**
 
@@ -102,7 +102,7 @@ $env:MQTT_USERNAME = "tai-khoan-cua-ban"
 $env:MQTT_PASSWORD = "mat-khau-cua-ban"
 ```
 
-Đặt cổng và TLS theo cấu hình thực tế của broker. TLS sử dụng chứng chỉ được hệ thống tin cậy. Không đưa mật khẩu thật vào mã nguồn hoặc GitHub. Chương trình không tự đọc file `.env`. Khi đổi về broker không xác thực, xóa thông tin tài khoản bằng:
+Đặt cổng và TLS theo cấu hình thực tế của broker. Chương trình đọc trực tiếp biến môi trường, không tự đọc file `.env`. Khi đổi về broker không xác thực, xóa thông tin tài khoản bằng:
 
 ```powershell
 Remove-Item Env:MQTT_USERNAME, Env:MQTT_PASSWORD -ErrorAction SilentlyContinue
@@ -123,26 +123,4 @@ Payload: lời chào - mã sinh viên - họ tên
 | `config.py` | Đọc cấu hình broker, tạo client ID riêng, thiết lập xác thực/TLS |
 | `requirements.txt` | Cố định thư viện `paho-mqtt==2.1.0` |
 
-Hai chương trình dùng MQTT 3.1.1, callback API phiên bản 2 của Paho và payload UTF-8. QoS 1 yêu cầu broker xác nhận tiếp nhận; trong một số tình huống có thể nhận lặp. Xác nhận này không có nghĩa subscriber đã xử lý xong thông điệp. `retain=False` không lưu lời chào thành thông điệp retained mới, vì vậy hãy chạy subscriber trước publisher. Client ID riêng giúp các lần chạy không ngắt kết nối của nhau.
-
-## 5. Xử lý lỗi và kiểm tra trước khi nộp
-
-| Hiện tượng | Nguyên nhân / cách xử lý |
-| --- | --- |
-| `No module named 'paho'` | Chưa cài vào đúng Python; chạy lại lệnh cài trong phần 1 |
-| Từ chối kết nối, lỗi DNS hoặc hết thời gian chờ | Kiểm tra địa chỉ, cổng, mạng/firewall và trạng thái broker; có thể dùng Mosquitto tại máy |
-| Broker từ chối tài khoản hoặc topic | Kiểm tra tài khoản và quyền publish/subscribe `iot/lab/message` |
-| Gửi thành công nhưng chưa nhận được | Chờ subscriber báo sẵn sàng, kiểm tra hai terminal dùng cùng broker/cổng, rồi gửi lại |
-| Lỗi chứng chỉ TLS | Kiểm tra cổng TLS và chứng chỉ broker; không tắt kiểm tra chứng chỉ để bỏ qua lỗi |
-
-Kiểm tra: chạy subscriber, gửi 3 thông điệp, đối chiếu topic/nội dung/thời điểm, sau đó nhấn Ctrl+C để dừng.
-
-Có thể chạy kiểm thử tự động (cần Internet, khoảng 30 giây):
-
-```powershell
-.\.venv\Scripts\python.exe tests\smoke_test.py
-```
-
-Kiểm thử xác nhận thông tin sinh viên mặc định mà không gửi lên mạng. Sau đó dùng tên giả có dấu để gửi 3 bản tin và thêm 1 lời chào từ lần chạy publisher khác qua broker công cộng; kiểm tra topic, payload, giờ nhận hợp lệ và subscriber vẫn chạy liên tục. Các trường hợp dừng bằng SIGINT (Ctrl+C), tham số sai, hiển thị tiếng Việt và broker không kết nối được cũng được kiểm tra.
-
-Nộp các tệp mã nguồn, `requirements.txt` và README này lên GitHub; không nộp `.venv` hoặc mật khẩu. Hạn nộp theo đề: **23:59 Thứ Bảy 10/10/2026**; gửi liên kết GitHub vào nhóm Zalo của lớp.
+Hai chương trình dùng MQTT 3.1.1 và payload UTF-8. Publisher gửi với QoS 1 và chờ broker xác nhận tiếp nhận. Subscriber đăng ký topic `iot/lab/message`, hiển thị nội dung cùng thời điểm nhận và chạy liên tục đến khi nhấn Ctrl+C.
